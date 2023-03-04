@@ -35,9 +35,9 @@ USAGE
 foreach my $dir (@indir) {
 	next if !-d $dir;
 	printf "%s . . .\n", $dir;
-	my $ofile=File::Spec->catfile($dir, 'subdirplaylist0.m3u');
+	my $ofile=File::Spec->catfile($dir, 'tmp_all_cue_files.txt');
 	my $ofile2=File::Spec->catfile($dir, 'subdirplaylist.m3u');
-	my $cmd=sprintf 'dir %s\*.cue /b /s >%s', $dir, $ofile;
+	my $cmd=sprintf 'dir %s\*.cue /b /s >%s', $dir, $ofile; # hold all cue files into this txt file
 	system($cmd);
 	open (my $fh, $ofile);
 	open (my $fh2, ">", $ofile2);
@@ -46,6 +46,7 @@ foreach my $dir (@indir) {
 	while (<$fh>) {
 		chomp;
 		my $rel=File::Spec->abs2rel($_, $dir);
+		printf "    %s\n", $rel;
 		printf $fh2 "%s\n", $rel;
 	}
 	close ($fh);
