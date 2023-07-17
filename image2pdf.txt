@@ -1,0 +1,2 @@
+# require imagemagick
+$ magick input_dir/*.{png,jpeg} -density 150 output_dir/merged_images.pdf

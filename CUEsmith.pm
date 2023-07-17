@@ -4,6 +4,7 @@ use warnings;
 use File::Spec;
 use Data::Dumper;
 use Storable qw/:DEFAULT dclone/;
+use utf8;
 
 # deals with cue files
 # originally PARSE_Cue , created: 2014-1-30
@@ -44,7 +45,7 @@ sub new { # {0} for $ALBUM, {1,2,3...} for $TRLIST
 	return $cue;
 }
 sub read { #read from external cue file. open as UTF-8(+BOM) ONLY
-	my ($cue,$file,$append)=@_;
+	my ($cue,$file,$append)=@_; # use_given_path: abs or rel path for current cue. useful if dealing with subdirs
 	# print Dumper $cue->{album};<>;
 	if (!$file or !-e $file or -z $file or -B $file) {
 		return undef;
@@ -58,8 +59,8 @@ sub read { #read from external cue file. open as UTF-8(+BOM) ONLY
 
 	my $currfile;
 	$album->{path}=$file; #full cue path
-	# open (my $fh, "<:encoding(utf-8)",$file);
-	open (my $fh, "<",$file);
+	open (my $fh, "<:encoding(utf-8)",$file);
+	# open (my $fh, "<",$file);
 	while (<$fh>) {
 		# print $_;<>;
 		chomp;
@@ -117,8 +118,7 @@ sub read { #read from external cue file. open as UTF-8(+BOM) ONLY
 	if (!$append) { #new file
 		$cue->{album}=dclone $album;
 		$cue->{files}=dclone $files;
-	}
-	else { #append new cue, do NOT add album info
+	} else { #append new cue, do NOT add album info
 		shift @$files; #remove element [0] undef
 		push @{$cue->{files}}, @$files;
 	}
@@ -161,12 +161,6 @@ sub _unify_album {
 	} else {
 		$cue->{album}{artist}=clean_text($cue->{album}{artist});
 	}
-}
-sub clean_text { #non OO
-	my $txt=shift;
-	$txt=~s/"/h/g;
-	$txt=~s/^\s+|\s+$//g;
-	return $txt;
 }
 
 # view/change hash info
@@ -364,5 +358,47 @@ sub transfer_time_to { #transfer 1st cue's time index, map into 2nd cue's tr inf
 
 =cut
 
+
+# standalone subs
+sub clean_text { #non OO
+	my $txt=shift;
+	$txt=~s/"/â€/g;
+	$txt=~s/^\s+|\s+$//g;
+	return $txt;
+}
+sub sort_cue_by_name { # sort cue files by file name only, as it's common that input cue file is a full path
+	my ($cuelist, $basedir, $sort_by_name)=@_; # A ref. if sort_by_name is 0, will not sort. returned value will be relative dir to input dir
+	my $fnames;
+	my $ds1;
+	foreach my $file (@$cuelist) {
+		next if !-e $file;
+		my @ds=File::Spec->splitpath($file);
+		my $dir=File::Spec->catdir($ds[0], $ds[1]);
+		$dir=File::Spec->abs2rel($file, $basedir);
+		my $cue=$ds[2];
+		$fnames->{$cue}=$dir;
+		push @$ds1, $dir;
+	}
+	if (!$sort_by_name) {
+		return $ds1;
+	} else {
+		my $ds2;
+		for my $cue (sort {$a cmp $b} keys %$fnames) {
+			push @$ds2, $fnames->{$cue};
+		}
+		return $ds2;
+	}
+}
+sub get_cue_from_dir { # get *.cue from all subdirs, return A ref
+	my ($dir, $sort_by_name, $current_level_only)=@_;
+	my $cmd0=sprintf 'dir %s\*.cue /b', $dir; # hold all cue files into this txt file
+	if (!$current_level_only) {
+		$cmd0.=' /s'; # also look in subdirs
+	}
+	my $x=`$cmd0`; # shouldn't be slow, assuming the input dir only contain a decent amount of subfolders
+	my @infiles=split "\r?\n", $x;
+	my $cuelist=sort_cue_by_name(\@infiles, $dir, $sort_by_name);
+	return $cuelist;
+}
 
 1;

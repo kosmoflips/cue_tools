@@ -8,23 +8,27 @@ use Storable qw/:DEFAULT dclone/;
 use Data::Dumper;
 
 # make A simple m3u playlist from a given dir
-# use lib ".";
-# use CUEsmith;
+use lib ".";
+use CUEsmith;
 
 use Cwd;
 
-my (@indir, $help);
+my (@indir, $help, $sort_by_name);
 GetOptions(
 	'dir=s{1,}'=>\@indir,
+	'sort'=>\$sort_by_name,
 	'help'=>\$help,
 );
 
 if ($help or !@indir) { die <<USAGE;
 -------------------------
-# make simple m3u playlist from given dir(s)
-# only read cue files
+# make a combined m3u playlist of all cue files under each given dir.
 
-[-d DIR1 DIR2 ...]
+--- required -----
+[-d DIR1 DIR2 ...] # only cue files will be taken
+
+--- optional -----
+[-s] # sort cue files under each given folder by filename
 
 -------------------------
 
@@ -34,23 +38,19 @@ USAGE
 
 foreach my $dir (@indir) {
 	next if !-d $dir;
-	printf "%s . . .\n", $dir;
-	my $ofile=File::Spec->catfile($dir, 'tmp_all_cue_files.txt');
-	my $ofile2=File::Spec->catfile($dir, 'subdirplaylist.m3u');
-	my $cmd=sprintf 'dir %s\*.cue /b /s >%s', $dir, $ofile; # hold all cue files into this txt file
-	system($cmd);
-	open (my $fh, $ofile);
+	printf "- %s . . .\n", $dir;
+
+	my $cuelist=CUEsmith::get_cue_from_dir($dir, $sort_by_name);
+
+	my $ofile2=File::Spec->catfile($dir, '_subdirplaylist.m3u');
 	open (my $fh2, ">", $ofile2);
+
 	my $tt=localtime(time);
 	printf $fh2 "# generated on %s\n", $tt;
-	while (<$fh>) {
-		chomp;
-		my $rel=File::Spec->abs2rel($_, $dir);
-		printf "    %s\n", $rel;
-		printf $fh2 "%s\n", $rel;
+	foreach my $cuefile (@$cuelist) {
+		printf "    %s\n", $cuefile;
+		printf $fh2 "%s\n", $cuefile;
 	}
-	close ($fh);
 	close ($fh2);
-	unlink $ofile;
-	printf "   >>%s\n\n", $ofile2;
+	printf "\n   >> %s\n\n", $ofile2;
 }
