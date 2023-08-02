@@ -28,7 +28,7 @@ if ($help or !@indir) { die <<USAGE;
 [-d DIR1 DIR2 ...] # only cue files will be taken
 
 --- optional -----
-[-s] # sort cue files under each given folder by filename
+[-s] # sort cue files under each given folder by filename, useful for a compilation of albums
 
 -------------------------
 
@@ -38,6 +38,7 @@ USAGE
 
 foreach my $dir (@indir) {
 	next if !-d $dir;
+	$dir=~s/[\\\/]$//; # remove trailing / and \ , for easier processing of splitdir
 
 	printf "- %s . . .\n", $dir;
 
