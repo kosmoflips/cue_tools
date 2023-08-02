@@ -38,11 +38,13 @@ USAGE
 
 foreach my $dir (@indir) {
 	next if !-d $dir;
+
 	printf "- %s . . .\n", $dir;
 
+	my @c=File::Spec->splitdir($dir);
 	my $cuelist=CUEsmith::get_cue_from_dir($dir, $sort_by_name);
+	my $ofile2=File::Spec->catfile($dir, sprintf('_%s.m3u', $c[-1]) );
 
-	my $ofile2=File::Spec->catfile($dir, '_subdirplaylist.m3u');
 	open (my $fh2, ">", $ofile2);
 
 	my $tt=localtime(time);
